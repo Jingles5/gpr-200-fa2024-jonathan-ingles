@@ -10,25 +10,38 @@ const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 600;
 
 float vertices[] = {
-	-0.5f, -0.5f, 0.0f,
-	 0.5f, -0.5f, 0.0f,
-	 0.0f,  0.5f, 0.0f
+	-0.5f, -0.5f, 0.0f, 1, 0, 0, 1,
+	 0.5f, -0.5f, 0.0f, 0, 1, 0, 1,
+	 0.0f,  0.5f, 0.0f, 0, 0, 1, 1,
 };
 
-const char* vertexShaderSource = "#version 330 core\n"
-"layout (location = 0) in vec3 aPos;\n"
-"void main()\n"
-"{\n"
-"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-"}\0";
+const char* vertexShaderSource = R"(
+#version 330 core
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec4 aColor;
+out vec4 Color; //Varying
+uniform float uTime;
+void main()
+{
+	Color = aColor; //pass through
+	vec3 pos = aPos;
+	pos.y += (sin(20000 * uTime - pos.x))/2;
+	pos.x += (cos(20000 * uTime - pos.z))/2;
+	gl_Position = vec4(pos.x, pos.y, pos.z, 1.0);
+}
+)";
 
-const char* fragmentShaderSource = "#version 330 core\n"
-"out vec4 FragColor;\n"
-
-"void main()\n"
-"{\n"
-"	FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-"}\0";
+const char* fragmentShaderSource = R"(
+#version 330 core
+out vec4 FragColor;
+in vec4 Color;
+uniform float uTime = 1;
+uniform vec4 uColor;
+void main()
+{
+	FragColor = Color * tan(uTime)*tan(uTime);
+}
+)";
 
 int main() {
 	printf("Initializing...");
@@ -51,6 +64,7 @@ int main() {
 	unsigned int VAO;
 	glGenVertexArrays(1, &VAO);glBindVertexArray(VAO);
 
+	//vertex buffer object
 	unsigned int VBO;
 	glGenBuffers(1, &VBO);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
@@ -62,9 +76,13 @@ int main() {
 	glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
 	glCompileShader(vertexShader);
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	//position
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 
+	//color
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)(sizeof(float)*3));
+	glEnableVertexAttribArray(1);
 
 	int  success;
 	char infoLog[512];
@@ -102,14 +120,22 @@ int main() {
 	//Render loop
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
+
+		float time = (float)glfwGetTime();
+
 		//Clear framebuffer
 		glClearColor(0.3f, 0.4f, 0.9f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
+
 		//Drawing happens here!
 		glUseProgram(shaderProgram);//using this hsader specifically
+		int timeLoc = glGetUniformLocation(shaderProgram, "uTime");
+		glUniform1f(timeLoc, time);
 		glBindVertexArray(VAO);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
 		glfwSwapBuffers(window);
+
+
 	}
 	printf("Shutting down...");
 }
