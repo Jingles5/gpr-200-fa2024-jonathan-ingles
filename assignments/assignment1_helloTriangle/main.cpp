@@ -25,8 +25,8 @@ void main()
 {
 	Color = aColor; //pass through
 	vec3 pos = aPos;
-	pos.y += (sin(20000 * uTime - pos.x))/2;
-	pos.x += (cos(20000 * uTime - pos.z))/2;
+	pos.y += (sin(2 * uTime - pos.x))/2;
+	pos.x += (cos(2 * uTime - pos.x))/2;
 	gl_Position = vec4(pos.x, pos.y, pos.z, 1.0);
 }
 )";
