@@ -15,7 +15,7 @@ ${CMAKE_CURRENT_SOURCE_DIR}/assets/
 ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/assets/)
 
 install(FILES ${ASSIGNMENT2_INC} DESTINATION include/assignment2)
-add_executable(assignment2 ${ASSIGNMENT2_SRC} ${ASSIGNMENT2_INC})
+add_executable(assignment2 ${ASSIGNMENT2_SRC} ${ASSIGNMENT2_INC}  "stb_image.h"  )
 target_link_libraries(assignment2 PUBLIC core IMGUI glm)
 target_include_directories(assignment2 PUBLIC ${CORE_INC_DIR} ${stb_INCLUDE_DIR})
 
