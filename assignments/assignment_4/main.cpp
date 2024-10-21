@@ -7,6 +7,9 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
+#include "JonFolder/shader.h"
+#include "JonFolder/texture.h"
+
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 600;
 
@@ -27,128 +30,6 @@ float texCoords[] = {
 	1.0f, 0.0f,  // lower-right corner
 	0.5f, 1.0f   // top-center corner
 };
-
-const char* bgVertexShaderSource = R"(
-#version 330 core
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aColor;
-layout (location = 2) in vec2 aTexCoord;
-
-out vec3 ourColor;
-out vec2 TexCoord;
-
-out vec4 Color; //Varying
-uniform float uTime;
-void main()
-{
-	gl_Position = vec4(aPos, 1.0);
-    ourColor = aColor;
-    TexCoord = aTexCoord * vec2(20, 20) + vec2(uTime,sin(uTime)); 
-}
-)";
-
-const char* fgVertexShaderSource = R"(
-#version 330 core
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aColor;
-layout (location = 2) in vec2 aTexCoord;
-
-out vec3 ourColor;
-out vec2 TexCoord;
-
-out vec4 Color; //Varying
-uniform float uTime;
-void main()
-{
-	gl_Position = vec4(aPos * abs(sin(uTime)), 1.0);
-    ourColor = aColor;
-    TexCoord = aTexCoord;
-/*
-	Color = aColor; //pass through
-	vec3 pos = aPos;
-	pos.y += (sin(2 * uTime - pos.x))/2;
-	pos.x += (cos(2 * uTime - pos.x))/2;
-	gl_Position = vec4(pos.x, pos.y, pos.z, 1.0);*/
-}
-)";
-
-const char* bgFragmentShaderSource = R"(
-#version 330 core
-out vec4 FragColor;
-
-in vec3 ourColor;
-in vec2 TexCoord;
-
-
-uniform sampler2D texture1;
-uniform sampler2D texture2;
-
-in vec4 Color;
-uniform float uTime = 1;
-uniform vec4 uColor;
-uniform sampler2D ourTexture;
-void main()
-{
-	vec4 texColor = texture(texture1, TexCoord);
-    if(texColor.a < 0.1)
-        discard;
-	FragColor = mix(texture(texture1, TexCoord), texture(texture2, TexCoord), 0.2); 
-}
-
-)"; const char* fgFragmentShaderSource = R"(
-#version 330 core
-out vec4 FragColor;
-
-in vec3 ourColor;
-in vec2 TexCoord;
-
-
-uniform sampler2D texture1;
-uniform sampler2D texture2;
-
-in vec4 Color;
-uniform float uTime = 1;
-uniform vec4 uColor;
-uniform sampler2D ourTexture;
-void main()
-{
-	//FragColor = Color*sin(uTime);
-	//FragColor = texture(ourTexture, TexCoord);
-	//FragColor = texture(ourTexture, TexCoord) * vec4(ourColor, 1.0);  
-	vec4 texColor = texture(texture1, TexCoord);
-    if(texColor.a < 0.1)
-        discard;
-    FragColor = texColor;
-}
-)";
-
-//functions
-unsigned int loadTexture2D(const char* filePath, int filterMode, int wrapMode) {
-	unsigned int textureID;
-	glGenTextures(1, &textureID);
-	glBindTexture(GL_TEXTURE_2D, textureID);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapMode);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapMode);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterMode);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterMode);
-
-	int width, height, nrChannels; 
-	stbi_set_flip_vertically_on_load(true);
-	unsigned char* data = stbi_load(filePath, &width, &height, &nrChannels, 4);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-		glGenerateMipmap(GL_TEXTURE_2D);
-
-	stbi_image_free(data);
-
-	glActiveTexture(GL_TEXTURE0); // activate the texture unit first before binding texture
-	glBindTexture(GL_TEXTURE_2D, textureID);
-
-	return textureID;
-}
-
-
-
 
 int main() {
 	printf("Initializing...");
@@ -204,17 +85,12 @@ int main() {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
 
+	JonFolder::Shader fgShader("assets/vertexShader.vert", "assets/fragmentShader.frag");
+	JonFolder::Texture fgTexture("assets/yippee.png", GL_NEAREST, GL_REPEAT);
 
-	unsigned int bgShaderProgram = compileShader(bgVertexShaderSource, bgFragmentShaderSource);
-	unsigned int fgShaderProgram = compileShader(fgVertexShaderSource, fgFragmentShaderSource);
 
-	
-	//texture code overall
-	unsigned int bgtexture = loadTexture2D("assets/container.jpg", GL_LINEAR, GL_MIRRORED_REPEAT);
-	unsigned int fgtexture = loadTexture2D("assets/notlilguybutlil.png", GL_NEAREST, GL_REPEAT);
 
 	stbi_set_flip_vertically_on_load(true);
-	unsigned int texture2 = loadTexture2D("assets/yippee.png", GL_LINEAR, GL_REPEAT);
 
 	//Render loop
 	while (!glfwWindowShouldClose(window)) {
@@ -227,36 +103,17 @@ int main() {
 		glClearColor(0.3f, 0.4f, 0.9f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 		//Drawing happens here!
-		glUseProgram(bgShaderProgram);//using this shader specifically
-		int timeLoc = glGetUniformLocation(bgShaderProgram, "uTime");
-		glUniform1f(timeLoc, time);
-		glUniform1i(glGetUniformLocation(bgShaderProgram, "texture1"), 0);
-		glUniform1i(glGetUniformLocation(bgShaderProgram, "texture2"), 1);
-		glActiveTexture(GL_TEXTURE0); // activate the texture unit first before binding texture
-		glBindTexture(GL_TEXTURE_2D, bgtexture);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, texture2);
 		//the two commented below were for triangles, we like squares now!
 		glBindVertexArray(VAO);
-		//glDrawArrays(GL_TRIANGLES, 0, 3);
-
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-		//end of bg
-		
-		//lilguy
 		
 		//Drawing happens here!
-		glUseProgram(fgShaderProgram);//using this shader specifically
-		int timeLoc2 = glGetUniformLocation(fgShaderProgram, "uTime");
-		glUniform1f(timeLoc2, time);
-		glUniform1i(glGetUniformLocation(fgShaderProgram, "texture2"), 1);
-
-		glActiveTexture(GL_TEXTURE0); // activate the texture unit first before binding texture
-		glBindTexture(GL_TEXTURE_2D, fgtexture);
-		//the two commented below were for triangles, we like squares now!
-		glBindVertexArray(VAO);
-		//glDrawArrays(GL_TRIANGLES, 0, 3);
+		fgShader.use();
+		fgShader.setFloat("uTime", time);
+		fgShader.setInt("texture1", 0);
+		fgTexture.Bind(0);
+		
 
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		//end of lilguy
