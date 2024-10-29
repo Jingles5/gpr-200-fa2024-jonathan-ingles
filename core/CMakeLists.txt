@@ -15,7 +15,7 @@ set(CORE_INC_DIR
  CACHE PATH "CORE INCLUDE SOURCE PATH"
 )
 
-add_library(core STATIC ${CORE_SRC} ${CORE_INC} "JonFolder/shader.cpp" "JonFolder/shader.h" "JonFolder/texture.cpp")
+add_library(core STATIC ${CORE_SRC} ${CORE_INC} "JonFolder/shader.cpp" "JonFolder/shader.h" "JonFolder/texture.cpp"  )
 
 find_package(OpenGL REQUIRED)
 
