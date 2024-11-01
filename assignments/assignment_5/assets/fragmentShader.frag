@@ -12,7 +12,7 @@ uniform float uTime = 1;
 uniform vec4 uColor;
 uniform sampler2D ourTexture;
 
-in vec3 lightColor;
+uniform vec3 lightColor;
 in vec3 FragPos;  
 in vec3 Normal;  
 uniform vec3 lightPos;
@@ -28,12 +28,12 @@ vec3 viewDir    = normalize(viewPos - FragPos);
 vec3 halfwayDir = normalize(lightDir + viewDir);
 
 // Ambient
-    vec3 ambient = ambientStrength * vec3(1.0, 1.0, 1.0); 
+    vec3 ambient = ambientStrength * lightColor; 
 
     // Diffuse
     vec3 norm = normalize(Normal);
     float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = diff * vec3(1.0, 1.0, 1.0); 
+    vec3 diffuse = diff * lightColor; 
 
     //Specular
     float specularStrength = 0.5;

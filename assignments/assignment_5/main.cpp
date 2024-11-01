@@ -47,8 +47,8 @@ float fov = 45.0f;
 //other variabels
 bool cameraSpeedBoost = false;
 // lighting
-glm::vec3 lightPos(0.0f, 5.0f, -5.0f);
-glm::vec3 lightColor(1.0f, 0.0f, 0.0f);
+glm::vec3 lightPos(0.0f, 0.0f, 0.0f);
+glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 float textureMix = 0.2f;
 float ambientStrength = 0.1f;
 float diffuseStrength = 1.0f;
@@ -200,6 +200,7 @@ int main() {
 
 	glfwSetCursorPosCallback(window, mouse_callback);
 	glfwSetScrollCallback(window, scroll_callback);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
 	//Render loop
 	while (!glfwWindowShouldClose(window)) {
@@ -211,27 +212,6 @@ int main() {
 		ImGui_ImplGlfw_NewFrame();
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui::NewFrame();
-
-		//settings window
-		ImGui::Begin("Settings");
-		ImGui::DragFloat3("Light Position", &lightPos.x, 0.1f);
-		ImGui::ColorEdit3("Light Color", &lightColor.r);
-		ImGui::SliderFloat("Ambient K", &ambientStrength, 0.0f, 1.0f);
-		ImGui::SliderFloat("Diffuse K", &diffuseStrength, 0.0f, 1.0f);
-		ImGui::SliderFloat("Specular K", &specularStrength, 0.0f, 1.0f);
-		ImGui::SliderInt("Shininess", &shinywoo, 2, 1024);
-		ImGui::SliderFloat("Texture Mix", &textureMix, 0.0f, 1.0f);
-		ImGui::End();
-
-		if (!ImGui::IsWindowHovered()) {
-			// Only disable the cursor if the ImGui window is not hovered
-			if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_PRESS) {
-				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-			}
-			else {
-				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-			}
-		}
 
 		float currentFrame = static_cast<float>(glfwGetTime());
 		deltaTime = currentFrame - lastFrame;
@@ -250,25 +230,27 @@ int main() {
 
 		fgShader.setInt("texture1", 0); 
 		fgTexture.Bind();
+
+		fgShader.setFloat("textureMix", textureMix);
+		fgShader.setFloat("ambientStrength", ambientStrength);
+		fgShader.setFloat("diffuseStrength", diffuseStrength);
+		fgShader.setFloat("specularStrength", specularStrength);
+		fgShader.setInt("shininess", shinywoo);
+		fgShader.setVec3("viewPos", cameraPos);
+		fgShader.setBool("override", false);
 		glActiveTexture(GL_TEXTURE0);
-		//fgTexture.bind();
 
-
-		glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 		fgShader.setVec3("lightColor", lightColor);
 		fgShader.setVec3("lightPos", lightPos);
 		fgShader.setVec3("viewPos", cameraPos);
 
-
-
-	glm::mat4 projection = glm::mat4(1.0f);
-	projection = glm::perspective(glm::radians(fov), 800.0f / 600.0f, 0.1f, 100.0f);
-	fgShader.setMat4("projection", projection);
+		glm::mat4 projection = glm::mat4(1.0f);
+		projection = glm::perspective(glm::radians(fov), 800.0f / 600.0f, 0.1f, 100.0f);
+		fgShader.setMat4("projection", projection);
 
 		//camera controls
 		glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 		fgShader.setMat4("view", view);
-
 
 		//actual drawing of cubes
 		glBindVertexArray(VAO);
@@ -290,13 +272,27 @@ int main() {
 		lightModel = glm::translate(lightModel, lightPos);
 		lightModel = glm::scale(lightModel, glm::vec3(0.2f)); // a smaller cube
 		lightCubeShader.setMat4("model", lightModel);
+		lightCubeShader.setVec3("lightColor", lightColor);
 
 		glBindVertexArray(lightCubeVAO);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 
+
+		//settings window
+		ImGui::Begin("Settings");
+		ImGui::DragFloat3("Light Position", &lightPos.x, 0.1f);
+		ImGui::ColorEdit3("Light Color", &lightColor.r);
+		ImGui::SliderFloat("Ambient K", &ambientStrength, 0.0f, 1.0f);
+		ImGui::SliderFloat("Diffuse K", &diffuseStrength, 0.0f, 1.0f);
+		ImGui::SliderFloat("Specular K", &specularStrength, 0.0f, 1.0f);
+		ImGui::SliderInt("Shininess", &shinywoo, 2, 1024);
+		ImGui::SliderFloat("Texture Mix", &textureMix, 0.0f, 1.0f);
+		ImGui::End();
+
+
 		// render imgui
 			ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 
 		glfwSwapBuffers(window);
@@ -309,8 +305,7 @@ void processInput(GLFWwindow* window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
-
-	float cameraSpeed = static_cast<float>(5 * deltaTime) * (cameraSpeedBoost?2:1);
+	float cameraSpeed = static_cast<float>(5 * deltaTime) * (cameraSpeedBoost ? 2 : 1);
 	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
 		cameraSpeedBoost = true;
 	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE)
@@ -327,13 +322,13 @@ void processInput(GLFWwindow* window)
 		cameraPos += glm::normalize(glm::cross(cameraFront, glm::cross(cameraFront, cameraUp))) * cameraSpeed;
 	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
 		cameraPos -= glm::normalize(glm::cross(cameraFront, glm::cross(cameraFront, cameraUp))) * cameraSpeed;
-
 	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_PRESS) {
 		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	}
 	else {
 		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	}
+
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -372,6 +367,8 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {\
 	direction.y = sin(glm::radians(pitch));
 	direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
 	cameraFront = glm::normalize(direction);
+
+	ImGui_ImplGlfw_CursorPosCallback(window, xpos, ypos);
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
